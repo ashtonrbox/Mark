@@ -11,6 +11,9 @@ import AppKit
 class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem!
     
+    var today = 0
+    var currentPeriod = -1
+    
     let timetable: [Int: [String]] = [
         1: ["English", "VCD", "Maths", "Economics", "History", "Health"],
         2: ["Horizon", "History", "Maths", "Maths", "Health", "Religion"],
@@ -55,7 +58,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.prohibited)
         
         print(getCurrentDay())
-        print(Date())
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
@@ -65,14 +67,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         
+        let image = NSImage(named: "Banner")
+        let imageView = NSImageView(image: image!)
+        imageView.frame = NSRect(x: -10, y: 0, width: 240, height: 73)
+
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 240, height: 73))
+        containerView.addSubview(imageView)
+
+        let menuItem = NSMenuItem()
+        menuItem.view = containerView
+        menu.addItem(menuItem)
+        
         menu.addItem(NSMenuItem.separator())
         
-        let today = getCurrentDay()
+        currentPeriod = getCurrentPeriod() ?? -1
+
+        today = getCurrentDay()
         if let todayClasses = timetable[today] {
             for (index, subject) in todayClasses.enumerated() {
                 let time = timestamps[index] ?? "NIL"
                 let classIcon = pointers[subject] ?? "NIL"
-                let customView = createClassMenuItemView(subject: "\(subject)", time: time, iconName: classIcon)
+                let customView = createClassMenuItemView(subject: "\(subject)", time: time, iconName: classIcon, indexL: index)
                 let menuItem = NSMenuItem()
                 menuItem.view = customView
                 menuItem.target = self
@@ -113,9 +128,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return cycleDay
     }
     
-    func createClassMenuItemView(subject: String, time: String, iconName: String) -> NSView {
+    func getCurrentPeriod() -> Int? {
+        let components = Calendar.current.dateComponents([.hour, .minute], from: Date())
+        let nowMinutes = (components.hour ?? 0) * 60 + (components.minute ?? 0)
+        
+        let periodTimes: [(start: Int, end: Int)] = [
+            (start: 8 * 60 + 45, end: 9 * 60 + 35),
+            (start: 9 * 60 + 35, end: 10 * 60 + 25),
+            (start: 10 * 60 + 50, end: 11 * 60 + 40),
+            (start: 11 * 60 + 40, end: 12 * 60 + 30),
+            (start: 13 * 60 + 20, end: 14 * 60 + 10),
+            (start: 14 * 60 + 10, end: 15 * 60 + 0)
+        ]
+        
+        for (index, period) in periodTimes.enumerated() {
+            if nowMinutes >= period.start && nowMinutes < period.end {
+                let todayNumber = getCurrentDay()
+                guard let todaysClasses = timetable[todayNumber],
+                      index < todaysClasses.count else {
+                    return nil
+                }
+                return index
+            }
+        }
+        
+        return nil
+    }
+    
+    func createClassMenuItemView(subject: String, time: String, iconName: String, indexL: Int) -> NSView {
         let view = NSView(frame: NSRect(x: 0, y: 0, width: 240, height: 35))
         view.setAccessibilityIdentifier(subject)
+        
+        if indexL == currentPeriod {
+            view.wantsLayer = true
+            view.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.2).cgColor
+        }
 
         let imageView = NSImageView()
         imageView.image = NSImage(named: iconName)
