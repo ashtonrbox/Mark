@@ -214,7 +214,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         if let url = URL(string: urlString) {
             NSWorkspace.shared.open(url)
-            // NSApplication.shared.terminate(nil)
+            
+            statusItem.menu?.cancelTracking()
         }
     }
     
