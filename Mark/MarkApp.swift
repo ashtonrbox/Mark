@@ -8,8 +8,26 @@
 import SwiftUI
 import AppKit
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+extension NSColor {
+    convenience init(hex: String, alpha: CGFloat = 1.0) {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+        
+        var rgb: UInt64 = 0
+        
+        Scanner(string: hexSanitized).scanHexInt64(&rgb)
+        
+        let red = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
+        let green = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
+        let blue = CGFloat(rgb & 0x0000FF) / 255.0
+        
+        self.init(red: red, green: green, blue: blue, alpha: alpha)
+    }
+}
+
+class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusItem: NSStatusItem!
+    var menu: NSMenu!
     
     var today = 0
     var currentPeriod = -1
@@ -47,13 +65,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         "Horizon": "o",
     ]
     
+    let highlights: [String: String] = [
+        "VCD": "#7DFFF8",
+        "Economics": "#F2DA66",
+        "History": "#B7B7B7",
+        "Religion": "#FF7B7B",
+        "English": "#A3FF7D",
+        "Maths": "#7DB2FF",
+        "Health": "#DC7DFF",
+        "Horizon": "#FFBB7D",
+    ]
+    
+    
     let calendar = Calendar.current
     
     let dayOne: Date = {
         let components = DateComponents(year: 2025, month: 5, day: 26)
         return Calendar.current.date(from: components)!
     }()
-
+    
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.prohibited)
         
@@ -64,12 +94,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let button = statusItem.button {
             button.image = NSImage(named: "Mark")
         }
+        
+        menu = NSMenu()
+        menu.delegate = self
+        statusItem.menu = menu
 
-        let menu = NSMenu()
+    }
+    
+    func menuWillOpen(_ menu: NSMenu) {
+        menu.removeAllItems()
         
         let image = NSImage(named: "Banner")
         let imageView = NSImageView(image: image!)
-        imageView.frame = NSRect(x: -10, y: 0, width: 240, height: 73)
+        imageView.frame = NSRect(x: 1, y: 0, width: 238, height: 73)
 
         let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 240, height: 73))
         containerView.addSubview(imageView)
@@ -81,8 +118,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
         
         currentPeriod = getCurrentPeriod() ?? -1
-
         today = getCurrentDay()
+        
+        print(getCurrentPeriod() ?? -1)
+        
         if let todayClasses = timetable[today] {
             for (index, subject) in todayClasses.enumerated() {
                 let time = timestamps[index] ?? "NIL"
@@ -102,8 +141,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             menu.addItem(NSMenuItem(title: "No classes", action: nil, keyEquivalent: ""))
         }
-
-        statusItem.menu = menu
     }
     
     func getCurrentDay() -> Int {
@@ -161,7 +198,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         if indexL == currentPeriod {
             view.wantsLayer = true
-            view.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.2).cgColor
+            view.layer?.backgroundColor = NSColor(hex: highlights[subject] ?? "#000000", alpha: 0.2).cgColor
         }
 
         let imageView = NSImageView()
